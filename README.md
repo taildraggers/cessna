@@ -4,52 +4,43 @@ Daily aggregator of **classic Cessna taildragger** classified listings from
 [Barnstormers.com](https://www.barnstormers.com), published as a static page
 (`docs/index.html`) meant to be embedded via `<iframe>` on taildraggers.com.
 
-Cessna makes dozens of models (152, 172, 182, 206, jets, ...), so this scraper
-pulls from broad Cessna/taildragger category pages and then keeps only ads
-whose title matches one of a specific allowlist of models — see
-[Model filter](#model-filter) below. Everything else (172s, 182s, off-brand
-listings that leak into a category page, etc.) is discarded before it's even
-fetched.
-
 Controller.com was evaluated (in the companion [Aeronca](https://github.com/taildraggers/aeronca)
 repo) and dropped: its search results are only reachable through an internal
 client-side widget (not a plain URL), which a headless browser can't drive
 reliably for an unattended daily job.
 
-## Model filter
+## Categories scraped
 
-Only listings whose title contains one of these (case/hyphen/space-insensitive)
-are published:
+This pulls directly from six model-specific Barnstormers category pages
+(each a dedicated model page, not a broad manufacturer hub):
 
-- Cessna 120
-- Cessna 140
-- Cessna 170
-- Cessna 180
-- Cessna 190
-- Cessna 195
-- L-19
-- Skywagon
-- Ag Wagon
-- Cessna Taildragger
+- [C-120 Taildragger](https://www.barnstormers.com/category-17372-Cessna--C-120-Taildragger.html)
+- [C-140 Taildragger](https://www.barnstormers.com/category-17373-Cessna--C-140-Taildragger.html)
+- [C-170 Taildragger](https://www.barnstormers.com/category-17384-Cessna--C-170-Taildragger.html)
+- [C-180 Skywagon](https://www.barnstormers.com/category-17396-Cessna--C-180-Skywagon.html)
+- [C-185](https://www.barnstormers.com/category-17400-Cessna--C-185.html)
+- [C-195](https://www.barnstormers.com/category-17404-Cessna--C-195.html)
 
-Edit `TARGET_MODEL_PHRASES` in `scraper/barnstormers.py` to change this list.
-Matching also accounts for how sellers actually write these titles: abbreviated
-forms like "C180" instead of "Cessna 180" (common on parts listings), and
-modifier words between the make and model, like "Cessna Turbo 195A For Sale".
+Edit `CATEGORY_URLS` in `scraper/barnstormers.py` to change this list.
+
+Because these are dedicated model categories rather than a broad hub, no title
+filtering is applied on top — everything found is published. (The earlier
+approach scraped Cessna's general category plus a multi-brand taildragger
+category and filtered by title; it turned out those broad pages returned
+mostly irrelevant 172/182/206 listings even after filtering, which is why
+this now points at the specific categories instead.) If testing turns up
+off-model listings leaking into one of these categories — the way unrelated
+aircraft leaked into Aviat's single "Aviat Aircraft" hub category in the
+companion repo — a title filter can be added back in.
 
 ## How it works
 
-- `scraper/barnstormers.py` searches Barnstormers.com's Cessna category and the
-  general Antique-Classic/Taildragger category, follows pagination, then
-  filters the resulting listing URLs against the model allowlist above
-  (Barnstormers builds each listing's URL slug directly from the ad's own
-  title, so this filter runs before any detail page is fetched). Only the
-  matching listings get their detail page visited to pull out price, location,
-  and posted date (falling back to regex heuristics over the visible text
-  since the site doesn't expose structured data); the title itself is derived
-  from the listing URL's own SEO slug, since every detail page shares one
-  generic `<title>`/`<h1>`. The final parsed title is checked against the
-  model allowlist again as a safety net.
+- `scraper/barnstormers.py` fetches each of the six category pages above,
+  follows pagination, and visits every listing's detail page to pull out the
+  price, location, and posted date (falling back to regex heuristics over the
+  visible text since the site doesn't expose structured data). The title is
+  derived from the listing URL's own SEO slug, since every detail page shares
+  one generic `<title>`/`<h1>`.
 - `main.py` runs the scraper, de-duplicates results, and renders them into
   `docs/index.html` titled **"Other Cessna Ads on the Web"**, with
   one row per listing: Title (linked to the original ad), Price, Location,
@@ -103,9 +94,3 @@ This writes/overwrites `docs/index.html`.
   show a `[warn]`/`[error]` line pointing at what broke rather than failing silently.
 - The scraper identifies itself with a browser-like `User-Agent` and adds a short
   delay between requests to be polite to the site.
-- The model filter assumes a listing's title is accurately reflected in its
-  URL slug, which has held true for every Barnstormers listing seen so far
-  across this and the companion Aeronca/American Champion/Aviat repos, with
-  one caveat: Barnstormers truncates very long slugs (seen cutting "...Sport
-  Taildragger" down to "...Sport-Taildrag"), so a small number of ads whose
-  matching phrase falls right at the truncation point could be missed.

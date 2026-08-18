@@ -1,19 +1,10 @@
 """Scraper for classic Cessna taildragger listings on barnstormers.com.
 
-Cessna makes dozens of models (152, 172, 182, 206, jets, ...), so unlike the
-single-manufacturer Aeronca/American Champion/Aviat scrapers, this one pulls
-from broader Cessna/taildragger category pages and then keeps only listings
-whose title matches one of the specific taildragger models requested:
-Cessna 120/140/170/180/190/195, L-19, Skywagon, Ag Wagon, or "Cessna
-Taildragger". Barnstormers builds each listing's URL slug directly from the
-ad's own title, so the model filter runs against that slug before ever
-fetching a detail page - this avoids downloading every unrelated 172/182/206
-ad just to discard it.
-
-Matching also has to account for how sellers actually write these titles:
-abbreviated forms ("C180" instead of "Cessna 180", common on parts listings)
-and modifier words between the make and model ("Cessna Turbo 195A For Sale").
-See ABBREVIATED_MODEL_PHRASES and _CESSNA_MODEL_GAP_RE below.
+Pulls directly from six model-specific Barnstormers category pages (each one
+a dedicated Cessna model page, not a broad manufacturer hub), so no title
+filtering is applied. If testing shows off-model listings leaking into one
+of these categories - the way unrelated aircraft leaked into Aviat's single
+"Aviat Aircraft" hub category - add a title check back in.
 """
 from __future__ import annotations
 
@@ -27,65 +18,19 @@ from .common import Listing, extract_date, extract_location, extract_price, fetc
 SITE_NAME = "Barnstormers.com"
 BASE = "https://www.barnstormers.com"
 
-# Broad category pages likely to carry the target Cessna taildragger models.
+# Model-specific category pages.
 CATEGORY_URLS = [
-    f"{BASE}/category-17352-Cessna.html",
-    f"{BASE}/category-16571-Antique-Classic--Taildragger.html",
+    f"{BASE}/category-17372-Cessna--C-120-Taildragger.html",
+    f"{BASE}/category-17373-Cessna--C-140-Taildragger.html",
+    f"{BASE}/category-17384-Cessna--C-170-Taildragger.html",
+    f"{BASE}/category-17396-Cessna--C-180-Skywagon.html",
+    f"{BASE}/category-17400-Cessna--C-185.html",
+    f"{BASE}/category-17404-Cessna--C-195.html",
 ]
-
-# Only ads whose title matches one of these (case/hyphen/space-insensitive)
-# are kept. Edit this list to change which models get published.
-TARGET_MODEL_PHRASES = [
-    "cessna 120",
-    "cessna 140",
-    "cessna 170",
-    "cessna 180",
-    "cessna 190",
-    "cessna 195",
-    "l 19",
-    "skywagon",
-    "ag wagon",
-    "cessna taildragger",
-]
-
-# Sellers often abbreviate "Cessna 180" as "C180"/"C 180", especially on parts
-# listings. Match those directly since "cessna 180" won't appear in the title.
-_TARGET_MODEL_NUMBERS = ("120", "140", "170", "180", "190", "195")
-ABBREVIATED_MODEL_PHRASES = [f"c {n}" for n in _TARGET_MODEL_NUMBERS] + [
-    f"c{n}" for n in _TARGET_MODEL_NUMBERS
-]
-
-# "Cessna Turbo 195A For Sale" - allow a modifier word or two between "Cessna"
-# and the model number, since plain substring matching misses these.
-_CESSNA_MODEL_GAP_RE = re.compile(
-    r"\bcessna\b(?:\s+\S+){0,2}\s+("
-    + "|".join(_TARGET_MODEL_NUMBERS)
-    + r")[a-z]?\b"  # allow a variant-letter suffix, e.g. "195A", "180B"
-)
 
 MAX_PAGES = 10
 LISTING_LINK_RE = re.compile(r"^/classified-(\d+)-(.+)\.html$")
 GENERIC_SITE_TITLE_SNIPPET = "barnstormers.com find aircraft"
-
-
-def _normalize(text: str) -> str:
-    """Lowercase and collapse hyphens/whitespace so phrase matching is forgiving
-    about "AG-Wagon" vs "Ag Wagon" vs "AGWAGON", "L-19" vs "L 19", etc."""
-    text = text.lower()
-    text = re.sub(r"[-_]", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
-def _matches_target_models(title: str) -> bool:
-    normalized = _normalize(title)
-    if any(phrase in normalized for phrase in TARGET_MODEL_PHRASES):
-        return True
-    if any(phrase in normalized for phrase in ABBREVIATED_MODEL_PHRASES):
-        return True
-    if _CESSNA_MODEL_GAP_RE.search(normalized):
-        return True
-    return False
 
 
 def _title_from_url(url: str) -> str:
@@ -176,22 +121,18 @@ def scrape() -> list[Listing]:
             if not next_url or not new_links:
                 break
             url = next_url
+        print(f"  [{category_url}] {len(seen_this_category)} listings total")
         all_links |= seen_this_category
 
-    print(f"[{SITE_NAME}] {len(all_links)} total listing URLs found across categories")
-
-    candidate_links = {url for url in all_links if _matches_target_models(_title_from_url(url))}
-    print(f"[{SITE_NAME}] {len(candidate_links)} match target Cessna taildragger models")
+    print(f"[{SITE_NAME}] {len(all_links)} unique listing URLs found across categories")
 
     listings: list[Listing] = []
-    for url in sorted(candidate_links):
+    for url in sorted(all_links):
         html = fetch(url)
         if not html:
             continue
         listing = _parse_detail_page(url, html)
-        # Belt-and-suspenders: re-check the final parsed title too, in case
-        # the real page title differs from the URL-slug guess.
-        if listing and _matches_target_models(listing.title):
+        if listing:
             listings.append(listing)
 
     print(f"[{SITE_NAME}] parsed {len(listings)} listings")
