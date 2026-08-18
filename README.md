@@ -45,6 +45,15 @@ instead.)
   visible text since the site doesn't expose structured data). The title is
   derived from the listing URL's own SEO slug, since every detail page shares
   one generic `<title>`/`<h1>`.
+- On top of the off-brand filter above, only whole-aircraft-for-sale listings are
+  kept. Each ad's title must state a model year and match one of the six target
+  model numbers (120/140/170/180/185/195, see `_extract_model` in
+  `scraper/barnstormers.py`); titles that read as parts, accessories, services,
+  or raffles are dropped. Every surviving listing's title is rewritten to a
+  canonical **`YEAR Cessna MODEL`** form (e.g. `1949 Cessna 170A`), regardless of
+  how the original ad was worded, so the page reads consistently. A real side
+  effect: ads that never state a model year in the title can't be reformatted and
+  are dropped too, even if they're genuine aircraft.
 - `main.py` runs the scraper, de-duplicates results, and renders them into
   `docs/index.html` titled **"Other Cessna Ads on the Web"**, with
   one row per listing: Title (linked to the original ad), Price, Location,

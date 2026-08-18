@@ -4,11 +4,15 @@ Pulls directly from six model-specific Barnstormers category pages (each one
 a dedicated Cessna model page, not a broad manufacturer hub). Testing found a
 small amount of off-brand contamination even on these dedicated pages (a
 Bellanca Decathlon, a Piper Vagabond, a Helio Courier, a car trade ad mixed
-in among the genuine Cessna listings/parts). Rather than requiring every
-title to positively match "Cessna" or a model number - which would also
-drop lots of genuine, unbranded parts listings ("185 Horizontal Stab",
-"McCauley fixed Pitch Propeller", etc.) - listings are only dropped when
-their title names a different aircraft manufacturer or an unrelated item.
+in among the genuine Cessna listings/parts), so titles naming a different
+manufacturer are dropped.
+
+On top of that, only whole-aircraft-for-sale listings are published: each
+ad's title must state a model year and match one of the six target model
+numbers (120/140/170/180/185/195), and titles that look like parts/
+accessories/services/raffles are dropped. Surviving titles are rewritten to
+a canonical "YEAR Cessna MODEL" form so every listing follows the same
+format.
 """
 from __future__ import annotations
 
@@ -17,10 +21,18 @@ from urllib.parse import unquote, urljoin
 
 from bs4 import BeautifulSoup
 
-from .common import Listing, extract_date, extract_location, extract_price, fetch
+from .common import (
+    Listing,
+    extract_date,
+    extract_location,
+    extract_price,
+    fetch,
+    format_aircraft_title,
+)
 
 SITE_NAME = "Barnstormers.com"
 BASE = "https://www.barnstormers.com"
+MAKE = "Cessna"
 
 # Model-specific category pages.
 CATEGORY_URLS = [
@@ -58,6 +70,20 @@ def _normalize(text: str) -> str:
 def _is_off_brand(title: str) -> bool:
     normalized = " " + _normalize(title) + " "
     return any((" " + phrase + " ") in normalized for phrase in OFF_BRAND_PHRASES)
+
+
+_MODEL_NUMBER_RE = re.compile(r"\bc?(120|140|170|180|185|195)([a-z])?\b", re.IGNORECASE)
+_SKYWAGON_RE = re.compile(r"skywagon", re.IGNORECASE)
+
+
+def _extract_model(title: str) -> tuple[str, str] | None:
+    match = _MODEL_NUMBER_RE.search(title)
+    if not match:
+        return None
+    model = match.group(1) + (match.group(2) or "").upper()
+    if _SKYWAGON_RE.search(title):
+        model += " Skywagon"
+    return MAKE, model
 
 
 def _title_from_url(url: str) -> str:
@@ -112,7 +138,16 @@ def _parse_detail_page(url: str, html: str) -> Listing | None:
     if not title:
         return None
 
+    if _is_off_brand(title):
+        return None
+
     text = soup.get_text(" ", strip=True)
+
+    formatted_title = format_aircraft_title(title, text, _extract_model)
+    if not formatted_title:
+        return None
+    title = formatted_title
+
     price = extract_price(text)
     location = extract_location(text)
     date_posted = extract_date(text)
@@ -164,7 +199,7 @@ def scrape() -> list[Listing]:
         if not html:
             continue
         listing = _parse_detail_page(url, html)
-        if listing and not _is_off_brand(listing.title):
+        if listing:
             listings.append(listing)
 
     print(f"[{SITE_NAME}] parsed {len(listings)} listings")
