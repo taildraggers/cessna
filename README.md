@@ -23,15 +23,19 @@ This pulls directly from six model-specific Barnstormers category pages
 
 Edit `CATEGORY_URLS` in `scraper/barnstormers.py` to change this list.
 
-Because these are dedicated model categories rather than a broad hub, no title
-filtering is applied on top — everything found is published. (The earlier
-approach scraped Cessna's general category plus a multi-brand taildragger
-category and filtered by title; it turned out those broad pages returned
-mostly irrelevant 172/182/206 listings even after filtering, which is why
-this now points at the specific categories instead.) If testing turns up
-off-model listings leaking into one of these categories — the way unrelated
-aircraft leaked into Aviat's single "Aviat Aircraft" hub category in the
-companion repo — a title filter can be added back in.
+These are dedicated model categories rather than a broad hub, so most of
+what's on them is published as-is — no requirement that a title mention
+"Cessna" or a model number (that would also drop plenty of genuine, unbranded
+parts listings like "185 Horizontal Stab"). Testing did turn up a handful of
+off-brand listings leaking into these pages regardless (a Bellanca Decathlon,
+a Piper Vagabond, a Helio Courier, even a car-trade ad), so
+`scraper/barnstormers.py` drops any title that names a different aircraft
+manufacturer or an unrelated item (`OFF_BRAND_PHRASES`), while keeping
+everything else. (The earlier approach scraped Cessna's general category plus
+a multi-brand taildragger category and filtered by an allowlist; it turned
+out those broad pages returned mostly irrelevant 172/182/206 listings even
+after filtering, which is why this now points at the specific categories
+instead.)
 
 ## How it works
 

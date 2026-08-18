@@ -1,10 +1,14 @@
 """Scraper for classic Cessna taildragger listings on barnstormers.com.
 
 Pulls directly from six model-specific Barnstormers category pages (each one
-a dedicated Cessna model page, not a broad manufacturer hub), so no title
-filtering is applied. If testing shows off-model listings leaking into one
-of these categories - the way unrelated aircraft leaked into Aviat's single
-"Aviat Aircraft" hub category - add a title check back in.
+a dedicated Cessna model page, not a broad manufacturer hub). Testing found a
+small amount of off-brand contamination even on these dedicated pages (a
+Bellanca Decathlon, a Piper Vagabond, a Helio Courier, a car trade ad mixed
+in among the genuine Cessna listings/parts). Rather than requiring every
+title to positively match "Cessna" or a model number - which would also
+drop lots of genuine, unbranded parts listings ("185 Horizontal Stab",
+"McCauley fixed Pitch Propeller", etc.) - listings are only dropped when
+their title names a different aircraft manufacturer or an unrelated item.
 """
 from __future__ import annotations
 
@@ -31,6 +35,29 @@ CATEGORY_URLS = [
 MAX_PAGES = 10
 LISTING_LINK_RE = re.compile(r"^/classified-(\d+)-(.+)\.html$")
 GENERIC_SITE_TITLE_SNIPPET = "barnstormers.com find aircraft"
+
+# Other manufacturers/off-topic items observed leaking into these Cessna
+# category pages. A title naming one of these is dropped even though
+# everything else found in these categories is published unfiltered.
+OFF_BRAND_PHRASES = [
+    "bellanca", "piper", "helio", "chevelle", "chevy", "aeronca", "luscombe",
+    "stinson", "taylorcraft", "beechcraft", "beech", "waco", "champion",
+    "citabria", "decathlon", "husky", "cubcrafters", "cub crafters",
+    "carbon cub", "maule", "mooney", "cirrus", "grumman", "swift",
+    "ercoupe", "pitts", "christen", "fairchild",
+]
+
+
+def _normalize(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"[-_]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _is_off_brand(title: str) -> bool:
+    normalized = " " + _normalize(title) + " "
+    return any((" " + phrase + " ") in normalized for phrase in OFF_BRAND_PHRASES)
 
 
 def _title_from_url(url: str) -> str:
@@ -126,13 +153,18 @@ def scrape() -> list[Listing]:
 
     print(f"[{SITE_NAME}] {len(all_links)} unique listing URLs found across categories")
 
+    candidate_links = {url for url in all_links if not _is_off_brand(_title_from_url(url))}
+    dropped_prefetch = len(all_links) - len(candidate_links)
+    if dropped_prefetch:
+        print(f"[{SITE_NAME}] {dropped_prefetch} dropped pre-fetch as off-brand")
+
     listings: list[Listing] = []
-    for url in sorted(all_links):
+    for url in sorted(candidate_links):
         html = fetch(url)
         if not html:
             continue
         listing = _parse_detail_page(url, html)
-        if listing:
+        if listing and not _is_off_brand(listing.title):
             listings.append(listing)
 
     print(f"[{SITE_NAME}] parsed {len(listings)} listings")
