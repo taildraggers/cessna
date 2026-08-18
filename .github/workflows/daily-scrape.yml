@@ -31,38 +31,6 @@ jobs:
       - name: Install Playwright Chromium
         run: playwright install --with-deps chromium
 
-      - name: Debug candidate titles
-        run: |
-          python3 - <<'PYEOF'
-          import sys
-          sys.path.insert(0, ".")
-          from scraper.barnstormers import CATEGORY_URLS, _find_listing_links, _title_from_url, _find_next_page_url
-          from scraper.common import fetch, close_browser
-
-          all_links = set()
-          for cat_url in CATEGORY_URLS:
-              url = cat_url
-              seen = set()
-              for page in range(1, 4):
-                  html = fetch(url)
-                  if not html:
-                      break
-                  links = _find_listing_links(html)
-                  new_links = links - seen
-                  print(f"[{cat_url}] page {page}: {len(links)} links ({len(new_links)} new)")
-                  seen |= links
-                  next_url = _find_next_page_url(html, url)
-                  if not next_url or not new_links:
-                      break
-                  url = next_url
-              all_links |= seen
-
-          close_browser()
-          print(f"\n{len(all_links)} total links; derived titles:")
-          for u in sorted(all_links):
-              print(f"  {_title_from_url(u)!r}  <- {u}")
-          PYEOF
-
       - name: Run scraper
         run: python main.py
 

@@ -9,6 +9,11 @@ Taildragger". Barnstormers builds each listing's URL slug directly from the
 ad's own title, so the model filter runs against that slug before ever
 fetching a detail page - this avoids downloading every unrelated 172/182/206
 ad just to discard it.
+
+Matching also has to account for how sellers actually write these titles:
+abbreviated forms ("C180" instead of "Cessna 180", common on parts listings)
+and modifier words between the make and model ("Cessna Turbo 195A For Sale").
+See ABBREVIATED_MODEL_PHRASES and _CESSNA_MODEL_GAP_RE below.
 """
 from __future__ import annotations
 
@@ -43,6 +48,21 @@ TARGET_MODEL_PHRASES = [
     "cessna taildragger",
 ]
 
+# Sellers often abbreviate "Cessna 180" as "C180"/"C 180", especially on parts
+# listings. Match those directly since "cessna 180" won't appear in the title.
+_TARGET_MODEL_NUMBERS = ("120", "140", "170", "180", "190", "195")
+ABBREVIATED_MODEL_PHRASES = [f"c {n}" for n in _TARGET_MODEL_NUMBERS] + [
+    f"c{n}" for n in _TARGET_MODEL_NUMBERS
+]
+
+# "Cessna Turbo 195A For Sale" - allow a modifier word or two between "Cessna"
+# and the model number, since plain substring matching misses these.
+_CESSNA_MODEL_GAP_RE = re.compile(
+    r"\bcessna\b(?:\s+\S+){0,2}\s+("
+    + "|".join(_TARGET_MODEL_NUMBERS)
+    + r")[a-z]?\b"  # allow a variant-letter suffix, e.g. "195A", "180B"
+)
+
 MAX_PAGES = 10
 LISTING_LINK_RE = re.compile(r"^/classified-(\d+)-(.+)\.html$")
 GENERIC_SITE_TITLE_SNIPPET = "barnstormers.com find aircraft"
@@ -59,7 +79,13 @@ def _normalize(text: str) -> str:
 
 def _matches_target_models(title: str) -> bool:
     normalized = _normalize(title)
-    return any(phrase in normalized for phrase in TARGET_MODEL_PHRASES)
+    if any(phrase in normalized for phrase in TARGET_MODEL_PHRASES):
+        return True
+    if any(phrase in normalized for phrase in ABBREVIATED_MODEL_PHRASES):
+        return True
+    if _CESSNA_MODEL_GAP_RE.search(normalized):
+        return True
+    return False
 
 
 def _title_from_url(url: str) -> str:

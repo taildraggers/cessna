@@ -33,6 +33,9 @@ are published:
 - Cessna Taildragger
 
 Edit `TARGET_MODEL_PHRASES` in `scraper/barnstormers.py` to change this list.
+Matching also accounts for how sellers actually write these titles: abbreviated
+forms like "C180" instead of "Cessna 180" (common on parts listings), and
+modifier words between the make and model, like "Cessna Turbo 195A For Sale".
 
 ## How it works
 
@@ -102,4 +105,7 @@ This writes/overwrites `docs/index.html`.
   delay between requests to be polite to the site.
 - The model filter assumes a listing's title is accurately reflected in its
   URL slug, which has held true for every Barnstormers listing seen so far
-  across this and the companion Aeronca/American Champion/Aviat repos.
+  across this and the companion Aeronca/American Champion/Aviat repos, with
+  one caveat: Barnstormers truncates very long slugs (seen cutting "...Sport
+  Taildragger" down to "...Sport-Taildrag"), so a small number of ads whose
+  matching phrase falls right at the truncation point could be missed.
