@@ -16,9 +16,17 @@ OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "docs", "index.html")
 PAGE_TITLE = "Other Cessna Ads on the Web"
 
 # Sites that block automated scraping, but are still worth sending visitors
-# to directly via a pre-filled search link.
+# to directly via a pre-filled search link. Trade-A-Plane's search supports
+# filtering by model/model_group, so instead of one bare "all Cessna" link,
+# each classic taildragger model this repo tracks gets its own button.
 EXTERNAL_SEARCH_LINKS = [
-    ("Trade-A-Plane", "https://www.trade-a-plane.com/filtered/search?s-type=aircraft&s-keyword-search=cessna&s-original-search=cessna"),
+    ("Trade-A-Plane: Cessna 120", "https://www.trade-a-plane.com/search?category_level1=Single+Engine+Piston&make=CESSNA&model=120&s-type=aircraft"),
+    ("Trade-A-Plane: Cessna 140", "https://www.trade-a-plane.com/search?category_level1=Single+Engine+Piston&make=CESSNA&model_group=CESSNA+140+SERIES&s-type=aircraft"),
+    ("Trade-A-Plane: Cessna 170", "https://www.trade-a-plane.com/search?category_level1=Single+Engine+Piston&make=CESSNA&model_group=CESSNA+170+SERIES&s-type=aircraft"),
+    ("Trade-A-Plane: Cessna 180", "https://www.trade-a-plane.com/search?category_level1=Single+Engine+Piston&make=CESSNA&model_group=CESSNA+180+SERIES&s-type=aircraft"),
+    ("Trade-A-Plane: Cessna 185", "https://www.trade-a-plane.com/search?category_level1=Single+Engine+Piston&make=CESSNA&model_group=CESSNA+185+SERIES&s-type=aircraft"),
+    ("Trade-A-Plane: Cessna 190", "https://www.trade-a-plane.com/search?category_level1=Single+Engine+Piston&make=CESSNA&model=190&s-type=aircraft"),
+    ("Trade-A-Plane: Cessna 195", "https://www.trade-a-plane.com/search?category_level1=Single+Engine+Piston&make=CESSNA&model_group=CESSNA+195+SERIES&s-type=aircraft"),
     ("Controller", "https://www.controller.com/listings?keywords=cessna"),
     ("ASO", "https://aso.com/search?q=Cessna"),
 ]
